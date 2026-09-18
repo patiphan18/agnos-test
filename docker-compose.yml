@@ -1,0 +1,36 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: agnos
+      POSTGRES_USER: agnos
+      POSTGRES_PASSWORD: agnos_dev_password
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agnos -d agnos"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d:ro
+
+  api:
+    build: .
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    expose:
+      - "8080"
+
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+    volumes:
+      - ./deploy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+
+volumes:
+  postgres_data:
